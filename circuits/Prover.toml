@@ -1,0 +1,10 @@
+x = 20
+y = 80
+
+[nested]
+is_true = true
+
+[nested.t1]
+val1 = 20
+val2 = 30
+val3 = 50
