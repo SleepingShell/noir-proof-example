@@ -1,0 +1,33 @@
+{
+  "name": "noir-proof-example",
+  "version": "1.0.0",
+  "description": "This repository demonstrates how to interact with the solidity verifier, more specifically I created this to test how structs are supposed to be passed to the verifier and add to the Noir documentation",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SleepingShell/noir-proof-example.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SleepingShell/noir-proof-example/issues"
+  },
+  "homepage": "https://github.com/SleepingShell/noir-proof-example#readme",
+  "dependencies": {
+    "@noir-lang/aztec_backend": "^0.1.0-0c3b2f2",
+    "@noir-lang/barretenberg": "github:noir-lang/barretenberg#39a1547875f941ef6640217a42d8f34972425c97",
+    "@noir-lang/noir_wasm": "^0.3.2-fa0e9cff"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "hardhat": "^2.14.1",
+    "hardhat-preprocessor": "^0.1.5"
+  }
+}
