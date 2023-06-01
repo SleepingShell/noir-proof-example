@@ -14,26 +14,6 @@ type ProvingSystem = {
   verifier: any
 }
 
-type Nested = {
-  t1: {
-    val1: bigint,
-    val2: bigint,
-    val3: bigint,
-  },
-  is_true: boolean
-}
-
-type Input = {
-  x: bigint,
-  nested: {
-    first: Nested,
-    second: Nested,
-  },
-  y: bigint,
-}
-
-type EncodedInput<T> = { [K in keyof T]: T[K] extends unknown ? EncodedInput<T[K]> : T[K]}
-
 const compileCircuit = async () => {
   const data = fs.readFileSync("circuits/src/main.nr", { encoding: 'utf-8' });
   initialiseResolver((id: any) => data);
@@ -61,6 +41,29 @@ const getProverAndVerifier = async (): Promise<ProvingSystem> => {
   }
 }
 
+const stripCalldata = (proof: Buffer, input: any): [string, string[]] => {
+  let num_inputs = function get_num_inputs(obj): number {
+    let num = 0;
+    for (let key of Object.keys(obj)) {
+      if (Object.keys(obj[key]).length > 0) {
+        num += get_num_inputs(obj[key]);
+      } else {
+        num += 1;
+      }
+    }
+    return num;
+  }(input)
+
+  const calldata: string[] = []
+  for (let i = 0; i < num_inputs; i++) {
+    calldata.push("0x" + proof.subarray(i*32, (i+1)*32).toString('hex'));
+  }
+
+  const proofOnly: string = "0x" + proof.subarray(num_inputs*32).toString('hex');
+
+  return [proofOnly, calldata];
+}
+
 describe("Creating proof", () => {
   it("Create and verify proof", async () => {
     const factory = await ethers.getContractFactory("UltraVerifier");
@@ -68,38 +71,49 @@ describe("Creating proof", () => {
     console.log("Verifier deployed to", contract.address);
 
     const proving = await getProverAndVerifier();
-    console.log(proving.abi);
 
-    const input: Input = {
-      x: 100n,
+    let input = {
+      x: 100,
+      nested: [1, 20, 30, 50, 1, 30, 70, 100],
+      y: 80,
+    };
+
+    /*
+    const input2 = {
+      x: 100,
       nested: {
         first: {
+          is_true: 1,
           t1: {
-            val1: 20n,
-            val2: 30n,
-            val3: 50n
+            val1: 20,
+            val2: 30,
+            val3: 50
           },
-          is_true: true
         },
         second: {
+          is_true: 1,
           t1: {
-            val1: 30n,
-            val2: 70n,
-            val3: 100n
+            val1: 30,
+            val2: 70,
+            val3: 100
           },
-          is_true: true
         }
       },
-      y: 80n
+      y: 80
     };
+    */
+    
+    // Adding the below line to compute_partial_witnesses would allow flattening nested objects w/ properties
+    //else if (Object.keys(any_object).length > 0) for (let k of Object.keys(any_object)) values = values.concat(AnyToHexStrs(any_object[k]));
 
-    let input2 = {
-      x: 100n,
-      nested: [20n, 30n, 50n, true, 30n, 70n, 100n, true],
-      y: 80n,
-    };
+    // This returns a buffer with the public inputs preprended to the proof
+    const proof = await create_proof(proving.prover, proving.acir, input);
+    console.log((proof as Buffer).toString('hex'));
 
-    const proof = await create_proof(proving.prover, proving.acir, input2);
-    console.log(proof);
+    const verified = await verify_proof(proving.verifier, proof);
+    console.log(verified);
+
+    console.log(...stripCalldata(proof, input));
+    await contract.verify(...stripCalldata(proof, input), { gasLimit: 3000000000 });
   });
 });
