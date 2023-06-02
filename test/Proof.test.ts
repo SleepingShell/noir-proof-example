@@ -41,25 +41,22 @@ const getProverAndVerifier = async (): Promise<ProvingSystem> => {
   }
 }
 
-const stripCalldata = (proof: Buffer, input: any): [string, string[]] => {
-  let num_inputs = function get_num_inputs(obj): number {
-    let num = 0;
-    for (let key of Object.keys(obj)) {
-      if (Object.keys(obj[key]).length > 0) {
-        num += get_num_inputs(obj[key]);
-      } else {
-        num += 1;
-      }
-    }
-    return num;
-  }(input)
+// TODO: Does not take into account return values
+const stripCalldata = (proof: Buffer, abi: any): [string, string[]] => {
+  console.log(abi);
+  let num_pub_inputs = 0;
+  let pub_inputs = abi['parameters'].filter(p => p['visibility'] == 'public').map(p => p['name']);
+  for (let k of pub_inputs) {
+    let obj = abi['param_witnesses'][k];
+    num_pub_inputs += obj.length;
+  }
 
   const calldata: string[] = []
-  for (let i = 0; i < num_inputs; i++) {
+  for (let i = 0; i < num_pub_inputs; i++) {
     calldata.push("0x" + proof.subarray(i*32, (i+1)*32).toString('hex'));
   }
 
-  const proofOnly: string = "0x" + proof.subarray(num_inputs*32).toString('hex');
+  const proofOnly: string = "0x" + proof.subarray(num_pub_inputs*32).toString('hex');
 
   return [proofOnly, calldata];
 }
@@ -73,7 +70,7 @@ describe("Creating proof", () => {
     const proving = await getProverAndVerifier();
 
     let input = {
-      x: 100,
+      x: 20,
       nested: [1, 20, 30, 50, 1, 30, 70, 100],
       y: 80,
     };
@@ -111,9 +108,8 @@ describe("Creating proof", () => {
     console.log((proof as Buffer).toString('hex'));
 
     const verified = await verify_proof(proving.verifier, proof);
-    console.log(verified);
 
-    console.log(...stripCalldata(proof, input));
-    await contract.verify(...stripCalldata(proof, input), { gasLimit: 3000000000 });
+    console.log(...stripCalldata(proof, proving.abi));
+    await contract.verify(...stripCalldata(proof, proving.abi), { gasLimit: 3000000000 });
   });
 });
